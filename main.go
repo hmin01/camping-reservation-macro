@@ -29,9 +29,21 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	// 대기
+	time.Sleep(500)
 
+	go ticker(session)
+	// 최대 30분 대기
+	time.Sleep(30 * time.Minute)
+	// 세션 종료
+	session.Delete()
+	// 웹 드라이버 종료
+	chromDriver.Stop()
+}
+
+func macro(session *webdriver.Session) {
 	// URL 접근
-	err = session.Url("https://camping.gtdc.or.kr/DZ_reservation/reserCamping_v3.php?xch=reservation&xid=camping_reservation&sdate=202304")
+	err := session.Url("https://camping.gtdc.or.kr/DZ_reservation/reserCamping_v3.php?xch=reservation&xid=camping_reservation&sdate=202304")
 	// 예외 처리
 	if err != nil {
 		log.Fatalln(err)
@@ -48,7 +60,7 @@ func main() {
 	time.Sleep(10)
 
 	// 예약 버튼
-	reservationBtn, err := session.FindElement(selenium.ByCSSSelector, "div.reservationZone table.dztbl > tbody > tr:nth-child(6) > td:first-child > ul > li:last-child > button")
+	reservationBtn, err := session.FindElement(selenium.ByCSSSelector, "div.reservationZone table.dztbl > tbody > tr:nth-child(6) > td:nth-child(2) > ul > li:last-child > button")
 	// 예외 처리
 	if err != nil {
 		log.Fatalln(err)
@@ -63,7 +75,7 @@ func main() {
 	var locationBtn webdriver.WebElement
 	for i := 3; i <= 10; i++ {
 		// 캠핑 위치 버튼
-		locationBtn, err = location.FindElement(selenium.ByCSSSelector, "#camping_zone > button:nth-child("+strconv.Itoa(i)+").on")
+		locationBtn, err = location.FindElement(selenium.ByCSSSelector, "button:nth-child("+strconv.Itoa(i)+").on")
 		// 예외 처리
 		if err != nil {
 			if i == 10 {
@@ -101,9 +113,26 @@ func main() {
 		log.Fatalln(err)
 	}
 	mnInput.Click()
+}
 
-	// // 세션 종료
-	// session.Delete()
-	// // 웹 드라이버 종료
-	// chromDriver.Stop()
+func ticker(session *webdriver.Session) {
+	// 매크로 실행 여부
+	var enabled bool = false
+	// 티커 생성
+	t := time.NewTicker(25 * time.Millisecond)
+	// Escape
+	defer t.Stop()
+	// Loop
+	for {
+		select {
+		case <-t.C:
+			// 오늘
+			today := time.Now()
+			// 시간 비교
+			if time.Now().After(time.Date(today.Year(), today.Month(), today.Day(), 10, 0, 1, 200, today.Location())) && !enabled {
+				macro(session)
+				enabled = true
+			}
+		}
+	}
 }
